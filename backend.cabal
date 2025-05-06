@@ -67,7 +67,12 @@ executable backend
     -- Other library packages from which modules are imported.
     build-depends:       
         base >=4.14,
-        scotty
+        scotty,
+        text, 
+        aeson,
+        persistent,
+        persistent-sqlite,
+        random
 
 
     -- Directories containing source files.
