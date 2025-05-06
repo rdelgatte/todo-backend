@@ -1,19 +1,17 @@
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-import Database.Persist.Sqlite
-import Control.Monad.IO.Class (liftIO, MonadIO (liftIO))
-import Database (TodoItemRow(..), migrateAll, toRow)
-import Model (TodoItem(..))
+import Control.Monad.Logger
+import Control.Monad.Reader
+import Database
+import Database.Persist.Sqlite (runMigration, withSqliteConn)
+import Web.Scotty
+
 main :: IO ()
-main = runSqlite ":memory:" $ do
-    runMigration migrateAll
-    
-    itemId <- insert $ toRow $ TodoItem Nothing "title" (Just "anything") False
-
-    -- read from db
-    item <- get itemId
-
-    liftIO $ print (item :: Maybe TodoItemRow)
-    
-    -- delete from db
-    delete itemId 
+main = runNoLoggingT $
+  withSqliteConn ":memory:" $ \sqlBackend -> do
+    runReaderT (runMigration migrateAll) sqlBackend -- Do the database migration once
+    NoLoggingT $
+      scotty 3000 $
+        get "/:word" $ do
+          beam <- pathParam "word"
+          html $ mconcat ["<h1>Scotty, ", beam, " me up!</h1>"]
