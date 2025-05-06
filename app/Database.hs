@@ -1,48 +1,49 @@
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-module Database where
+module Database (TodoItemRow(..), migrateAll, toRow, fromRow, getAll) where
 
-import Control.Monad.IO.Class
-import Control.Monad.Reader
-import Data.Scientific
-import Data.Text
-import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
-import Todo.Types
-
-share
-  [mkPersist sqlSettings, mkMigrate "migrateAll"]
-  [persistLowerCase |
-  ItemRow
-    title Text
-    deriving Show
+import Data.Text (Text)
+import Model (TodoItem(..))
+share 
+  [mkPersist sqlSettings, mkMigrate "migrateAll"] 
+  [persistLowerCase|
+TodoItemRow
+  title       Text
+  description Text Maybe
+  completed   Bool
+  deriving Show
 |]
 
-type DatabaseIO = ReaderT SqlBackend IO
 
-saveItem :: Item -> DatabaseIO ()
-saveItem Item = do
-  ItemId <- insert $ toRow Item
-  liftIO . putStrLn $ "Just saved Item " <> show Item <> " and its database ID is " <> show ItemId
+toRow :: TodoItem -> TodoItemRow
+toRow TodoItem {..} = TodoItemRow {todoItemRowTitle = todoItemTitle, todoItemRowDescription = todoItemDescription, todoItemRowCompleted = todoItemCompleted}
 
-getAllItems :: DatabaseIO [Item]
-getAllItems = do
-  Items :: [Entity ItemRow] <- selectList [] []
-  liftIO . putStrLn $ "Items in database are: " <> show Items
-  return $ fromRow <$> Items
-
-toRow :: Item -> ItemRow
-toRow Item {..} = ItemRow {ItemRowTitle = title, ItemRowDescription = description, ItemRowCompleted = completed}
-
-fromRow :: Entity ItemRow -> Item
-fromRow Entity {entityKey, entityVal = ItemRow {..}} =
-  Item
-    { identifier = Just $ fromSqlKey entityKey
-    , title = ItemRowTitle
-    , description = ItemRowDescription
-    , completed = ItemRowCompleted
+fromRow :: Entity TodoItemRow -> TodoItem
+fromRow Entity {entityKey, entityVal = TodoItemRow {..}} =
+  TodoItem
+    { todoItemIdentifier = Just $ fromSqlKey entityKey
+    , todoItemTitle = todoItemRowTitle
+    , todoItemDescription = todoItemRowDescription
+    , todoItemCompleted = todoItemRowCompleted
     }
+    
+getAll :: SqlPersistT IO [TodoItem]
+getAll = do
+  (todoItemRows :: [Entity TodoItemRow]) <- selectList [] [LimitTo 10]
+  return $ fromRow <$> todoItemRows
