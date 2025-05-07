@@ -76,8 +76,10 @@ executable backend
         aeson,
         persistent,
         persistent-sqlite,
-        scotty
-
+        scotty,                     
+        wai, 
+        wai-cors,
+        http-types
 
     -- Directories containing source files.
     hs-source-dirs:   app

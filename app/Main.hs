@@ -9,13 +9,28 @@ import Database.Persist (getEntity)
 import qualified Database.Persist as Sql
 import Database.Persist.Sqlite (Entity, PersistStoreWrite (insert_), runMigration, runSqlConn, selectList, withSqliteConn)
 import Model (TodoItem (..), TodoItemSpec (..))
+import Network.HTTP.Types.Method (methodDelete, methodPatch)
+import Network.Wai (Middleware)
+import Network.Wai.Middleware.Cors (cors, corsMethods, corsRequestHeaders, simpleCorsResourcePolicy, simpleHeaders)
 import Web.Scotty
+
+corsMiddleware :: Middleware
+corsMiddleware =
+  cors . const . Just $
+    simpleCorsResourcePolicy
+      { corsMethods =
+          methodPatch
+            : methodDelete
+            : corsMethods simpleCorsResourcePolicy,
+        corsRequestHeaders = simpleHeaders
+      }
 
 main :: IO ()
 main = runNoLoggingT $
   withSqliteConn ":memory:" $ \sqlBackend -> NoLoggingT $ do
     runSqlConn (runMigration migrateAll) sqlBackend
     scotty 3000 $ do
+      middleware corsMiddleware
       get "/items" $ do
         maybeCompleted <- queryParamMaybe @Bool "completed"
         case maybeCompleted of
