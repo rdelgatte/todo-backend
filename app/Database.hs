@@ -1,48 +1,52 @@
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module Database (TodoItemRow(..), migrateAll, toRow, fromRow, getAll) where
+module Database where
 
+import Data.Int (Int64)
+import Data.Text (Text)
 import Database.Persist.Sqlite
 import Database.Persist.TH
-import Data.Text (Text)
-import Model (TodoItem(..))
-share 
-  [mkPersist sqlSettings, mkMigrate "migrateAll"] 
+import Model (TodoItem (..))
+
+
+share
+  [mkPersist sqlSettings, mkMigrate "migrateAll"]
   [persistLowerCase|
 TodoItemRow
   title       Text
   description Text Maybe
-  completed   Bool
-  deriving Show
+  isCompleted   Bool sql=is_deleted
 |]
 
+mkTodoItemRowId :: Int64 -> TodoItemRowId
+mkTodoItemRowId = TodoItemRowKey . fromIntegral
 
 toRow :: TodoItem -> TodoItemRow
-toRow TodoItem {..} = TodoItemRow {todoItemRowTitle = todoItemTitle, todoItemRowDescription = todoItemDescription, todoItemRowCompleted = todoItemCompleted}
+toRow TodoItem {..} = TodoItemRow {todoItemRowTitle = todoItemTitle, todoItemRowDescription = todoItemDescription, todoItemRowIsCompleted = todoItemCompleted}
 
 fromRow :: Entity TodoItemRow -> TodoItem
 fromRow Entity {entityKey, entityVal = TodoItemRow {..}} =
   TodoItem
-    { todoItemIdentifier = Just $ fromSqlKey entityKey
-    , todoItemTitle = todoItemRowTitle
-    , todoItemDescription = todoItemRowDescription
-    , todoItemCompleted = todoItemRowCompleted
+    { todoItemIdentifier = Just $ fromSqlKey entityKey,
+      todoItemTitle = todoItemRowTitle,
+      todoItemDescription = todoItemRowDescription,
+      todoItemCompleted = todoItemRowIsCompleted
     }
-    
+
 getAll :: SqlPersistT IO [TodoItem]
 getAll = do
   (todoItemRows :: [Entity TodoItemRow]) <- selectList [] [LimitTo 10]

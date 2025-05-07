@@ -42,12 +42,6 @@
               pkgs.nil
               pkgs.nixfmt-rfc-style
             ];
-            shellHook = ''
-              set -o allexport
-              source .env && echo "Sourced .env" || echo "No .env to source"
-              source .env.local && echo "Sourced .env.local" || echo "No .env.local to source"
-              set +o allexport
-            '';
           }
         );
       }
