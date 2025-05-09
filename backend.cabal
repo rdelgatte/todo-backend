@@ -59,16 +59,27 @@ executable backend
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules: 
+        Model
+        Database
+
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
     build-depends:       
+        mtl ^>=2.3.1,
+        monad-logger ^>=0.3.42,
         base >=4.14,
-        scotty
-
+        text, 
+        aeson,
+        persistent,
+        persistent-sqlite,
+        scotty,                     
+        wai, 
+        wai-cors,
+        http-types
 
     -- Directories containing source files.
     hs-source-dirs:   app
