@@ -4,10 +4,10 @@
 
 import Control.Monad.Logger
 import Data.Int (Int64)
-import Database (EntityField (TodoItemRowIsCompleted), TodoItemRow (..), fromRow, migrateAll, mkTodoItemRowId, toRow)
+import Database (EntityField (TodoItemRowDescription, TodoItemRowIsCompleted, TodoItemRowTitle), TodoItemRow (..), fromRow, migrateAll, mkTodoItemRowId, toRow)
 import Database.Persist (getEntity)
 import qualified Database.Persist as Sql
-import Database.Persist.Sqlite (Entity, PersistStoreWrite (insert_), runMigration, runSqlConn, selectList, withSqliteConn)
+import Database.Persist.Sqlite (Entity, PersistStoreWrite (insert_), runMigration, runSqlConn, selectList, toSqlKey, withSqliteConn)
 import Model (TodoItem (..), TodoItemSpec (..))
 import Network.HTTP.Types.Method (methodDelete, methodPatch)
 import Network.Wai (Middleware)
@@ -68,10 +68,27 @@ main = runNoLoggingT $
 
       patch "/items/:id/complete" $ do
         identifier <- pathParam @Int64 "id"
+        spec <- jsonData @Bool
         runSqlConn
           ( Sql.update
               (mkTodoItemRowId identifier)
-              [ TodoItemRowIsCompleted Sql.=. True
+              [ TodoItemRowIsCompleted Sql.=. spec
               ]
           )
           sqlBackend
+
+      patch "/items/:id" $ do
+        identifier <- pathParam @Int64 "id"
+        (spec :: TodoItemSpec) <- jsonData @TodoItemSpec
+        runSqlConn
+          ( Sql.update
+              (toSqlKey identifier)
+              [ TodoItemRowTitle Sql.=. todoItemSpecTitle spec,
+                TodoItemRowDescription Sql.=. todoItemSpecDescription spec
+              ]
+          )
+          sqlBackend
+
+      delete "/items/:id" $ do
+        identifier <- pathParam @Int64 "id"
+        runSqlConn (Sql.delete (toSqlKey identifier :: Sql.Key TodoItemRow)) sqlBackend
