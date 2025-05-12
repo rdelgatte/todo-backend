@@ -22,7 +22,6 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Model (TodoItem (..))
 
-
 share
   [mkPersist sqlSettings, mkMigrate "migrateAll"]
   [persistLowerCase|
